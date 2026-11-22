@@ -1,0 +1,31 @@
+name: Inject enhancer.js into index.html
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'enhancer.js'
+      - '.github/workflows/inject-enhancer.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject enhancer.js script tag into index.html
+        run: |
+          python3 -c '
+          with open("index.html", "r", encoding="utf-8") as f:
+              html = f.read()
+          tag = "<script src=\"enhancer.js?v=1\"></script>"
+          if "enhancer.js" not in html:
+              html = html.replace("</body>", f"  {tag}\n</body>", 1)
+              with open("index.html", "w", encoding="utf-8") as f:
+                  f.write(html)
+          '
+      - name: Commit updated index.html
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || (git add index.html && git commit -m "Link enhancer.js for English search and full translation" && git push)
