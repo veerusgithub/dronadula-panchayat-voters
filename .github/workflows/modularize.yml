@@ -1,0 +1,83 @@
+name: Modularize index.html into GitHub-editable files
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/modularize.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  modularize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Split index.html into modular HTML, JS, and data files
+        run: |
+          python3 - << 'EOF'
+          import os, re, json
+
+          with open("index.html", "r", encoding="utf-8") as f:
+              html = f.read()
+
+          m_v = re.search(r"const\s+RAW_VOTERS\s*=\s*(\[.*?\]);", html, re.S)
+          m_p = re.search(r"const\s+VOTER_PHOTOS\s*=\s*(\{.*?\});", html, re.S)
+          if not (m_v and m_p):
+              print("index.html is already modularized; skipping split.")
+              raise SystemExit(0)
+
+          os.makedirs("data", exist_ok=True)
+          voters = json.loads(m_v.group(1))
+          photos = json.loads(m_p.group(1))
+
+          east_v = [r for r in voters if r[1] <= 7]
+          west_v = [r for r in voters if r[1] >= 8]
+
+          with open("data/voters-east.js", "w", encoding="utf-8") as f:
+              f.write("window.RAW_VOTERS = (window.RAW_VOTERS || []).concat(" + json.dumps(east_v, ensure_ascii=False, separators=(",", ":")) + ");\n")
+          with open("data/voters-west.js", "w", encoding="utf-8") as f:
+              f.write("window.RAW_VOTERS = (window.RAW_VOTERS || []).concat(" + json.dumps(west_v, ensure_ascii=False, separators=(",", ":")) + ");\n")
+
+          gp_to_ward = {str(r[0]): r[1] for r in voters}
+          ward_photos = {w: {} for w in range(1, 15)}
+          for gp, b64 in photos.items():
+              w = gp_to_ward.get(str(gp))
+              if w in ward_photos:
+                  ward_photos[w][str(gp)] = b64
+
+          for w in range(1, 15):
+              with open(f"data/photos-w{w}.js", "w", encoding="utf-8") as f:
+                  f.write("window.VOTER_PHOTOS = Object.assign(window.VOTER_PHOTOS || {}, " + json.dumps(ward_photos[w], separators=(",", ":")) + ");\n")
+
+          script_start = html.rfind("<script>", 0, m_v.start())
+          script_end = html.find("</script>", m_p.end())
+
+          app_js = html[m_p.end():script_end].lstrip("\r\n")
+          with open("app.js", "w", encoding="utf-8") as f:
+              f.write(app_js + "\n")
+
+          tags = [
+              "  <script>window.RAW_VOTERS = []; window.VOTER_PHOTOS = {};</script>",
+              '  <script src="data/voters-east.js"></script>',
+              '  <script src="data/voters-west.js"></script>',
+          ] + [f'  <script src="data/photos-w{w}.js"></script>' for w in range(1, 15)] + [
+              '  <script src="app.js"></script>',
+          ]
+          if "enhancer.js" not in html[script_end:]:
+              tags.append('  <script src="enhancer.js?v=1"></script>')
+
+          new_html = html[:script_start] + "\n".join(tags) + html[script_end + len("</script>"):]
+          new_html = new_html.replace(
+              'id="ward-pills" class="max-w-4xl mx-auto px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar"',
+              'id="ward-pills" class="max-w-4xl mx-auto px-3 py-2 flex flex-wrap items-center gap-1.5"'
+          )
+          with open("index.html", "w", encoding="utf-8") as f:
+              f.write(new_html)
+          print("Modularized successfully.")
+          EOF
+      - name: Commit modularized files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html app.js data/
+          git diff --cached --quiet || (git commit -m "Split index.html into modular HTML, app.js, and data modules" && git push)
