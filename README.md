@@ -1,3 +1,3 @@
-# ద్రోణాదుల తూర్పు — ఓటర్ స్లిప్ & ప్రచార ట్రాకర్
-104-పర్చూరు నియోజకవర్గం, ద్రోణాదుల తూర్పు (7 వార్డులు, 2,821 ఓటర్లు) కోసం ఓటర్ స్లిప్ మరియు ప్రచార ట్రాకర్.
-లైవ్ యాప్: https://veerusgithub.github.io/sliptrack-dronadula/
+# ఓటర్ స్లిప్ ట్రాకర్ (Voter Slip Tracker)
+
+A web application for tracking and managing voter slip distribution.
