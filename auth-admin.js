@@ -51,9 +51,9 @@
   }
 
   function getFbBase() {
-    if (typeof fbConfig === 'undefined' || !fbConfig.url) return null;
-    const base = typeof cleanFbUrl === 'function' ? cleanFbUrl(fbConfig.url) : fbConfig.url.trim().replace(/\/+$/, '');
-    const room = encodeURIComponent(fbConfig.room || (typeof DEFAULT_ROOM !== 'undefined' ? DEFAULT_ROOM : 'dronadula_main'));
+    const rawUrl = (typeof fbConfig !== 'undefined' && fbConfig.url && fbConfig.url.trim()) ? fbConfig.url : 'https://voter-list-17964-default-rtdb.firebaseio.com';
+    const base = typeof cleanFbUrl === 'function' ? cleanFbUrl(rawUrl) : rawUrl.trim().replace(/\/+$/, '');
+    const room = encodeURIComponent((typeof fbConfig !== 'undefined' && fbConfig.room) || (typeof DEFAULT_ROOM !== 'undefined' ? DEFAULT_ROOM : 'dronadula_main'));
     return `${base}/rooms/${room}`;
   }
 
@@ -589,10 +589,10 @@
   };
 
   async function syncAuthToFirebase() {
-    if (typeof fbConfig === 'undefined' || !fbConfig.url) return;
+    const rawUrl = (typeof fbConfig !== 'undefined' && fbConfig.url && fbConfig.url.trim()) ? fbConfig.url : 'https://voter-list-17964-default-rtdb.firebaseio.com';
     try {
-      const base = cleanFbUrl(fbConfig.url);
-      const room = encodeURIComponent(fbConfig.room || DEFAULT_ROOM);
+      const base = typeof cleanFbUrl === 'function' ? cleanFbUrl(rawUrl) : rawUrl.trim().replace(/\/+$/, '');
+      const room = encodeURIComponent((typeof fbConfig !== 'undefined' && fbConfig.room) || (typeof DEFAULT_ROOM !== 'undefined' ? DEFAULT_ROOM : 'dronadula_main'));
       await fetch(`${base}/rooms/${room}/auth.json`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
