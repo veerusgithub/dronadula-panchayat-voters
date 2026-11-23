@@ -1,5 +1,5 @@
-// features-v3.js — Auto Firebase Bidirectional Sync, Audit Log, Deceased/Outside Country/Auto Needed,
-// Compact Mobile Ward Selector, Ward-Level Visibility Masking & Ward Stats
+// features-v3.js (v4) — Auto Firebase Sync, Audit Log, Voter Phone, Bus/Auto Needed + Dashboard Counts/Filters,
+// Deceased, Outside Country + City, Compact Mobile Ward Selector & Ward Visibility Masking
 (function () {
   'use strict';
 
@@ -31,7 +31,10 @@
       delivered: false, phone: false, person: false,
       support: 'unknown', wish: '',
       ticket: 'none', city: '', unit: '',
-      deceased: false, autoNeeded: false, autoNote: '',
+      deceased: false,
+      autoNeeded: false, autoNote: '',
+      busNeeded: false, busNote: '',
+      voterPhone: '',
       ...base,
       location: loc
     };
@@ -116,7 +119,8 @@
         for (const [gp, loc] of Object.entries(localCamp)) {
           if (!loc || typeof loc !== 'object') continue;
           const rem = remoteCamp[gp];
-          const isMeaningful = loc.delivered || loc.phone || loc.person || loc.deceased || loc.autoNeeded ||
+          const isMeaningful = loc.delivered || loc.phone || loc.person || loc.deceased || loc.autoNeeded || loc.busNeeded ||
+            (loc.voterPhone && loc.voterPhone.trim()) ||
             (loc.support && loc.support !== 'unknown') || (loc.wish && loc.wish.trim()) ||
             (loc.location && loc.location !== 'in_village') || (loc.city && loc.city.trim());
           if (!isMeaningful) continue;
@@ -187,6 +191,15 @@
     return false;
   };
 
+  function jumpToSpecialFilter(filterVal) {
+    state.fSpecial = state.fSpecial === filterVal ? 'all' : filterVal;
+    state.pageLimit = 50;
+    if (state.fSpecial !== 'all' && state.activeTab === 'dashboard') {
+      state.activeTab = 'families';
+    }
+    renderAll();
+  }
+
   function injectCompactMobileCSS() {
     if (document.getElementById('compact-mobile-style')) return;
     const style = document.createElement('style');
@@ -213,7 +226,7 @@
     if (!bar) {
       bar = document.createElement('div');
       bar.id = 'compact-ward-bar';
-      bar.className = 'max-w-4xl mx-auto px-3 py-1.5 flex items-center gap-2 text-xs';
+      bar.className = 'max-w-4xl mx-auto px-3 py-1.5 flex items-center gap-1.5 text-xs';
       wardStrip.parentElement.insertBefore(bar, wardStrip);
     }
 
@@ -232,13 +245,13 @@
 
     const s = typeof window.getCurrentAuthSession === 'function' ? window.getCurrentAuthSession() : null;
     const assignedHint = (s && s.role !== 'admin' && s.scope && s.scope.startsWith('ward:'))
-      ? `<button id="jump-my-ward" type="button" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px]">My W${s.scope.split(':')[1]}</button>`
+      ? `<button id="jump-my-ward" type="button" class="shrink-0 px-2 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px]">W${s.scope.split(':')[1]}</button>`
       : '';
 
     bar.innerHTML = `
-      <label class="text-indigo-100 font-bold shrink-0 text-[11px]" for="compact-ward-select">${isTe ? 'వార్డు:' : 'Ward:'}</label>
-      <select id="compact-ward-select" class="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white text-slate-900 font-bold text-xs border border-indigo-300 focus:outline-none">${opts.join('')}</select>
+      <select id="compact-ward-select" class="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white text-slate-900 font-bold text-xs border border-indigo-300 focus:outline-none">${opts.join('')}</select>
       ${assignedHint}
+      <button id="quick-bus-filter" type="button" class="shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'bus_needed' ? 'bg-cyan-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Bus</button>
       <button id="quick-auto-filter" type="button" class="shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'auto_needed' ? 'bg-amber-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Auto</button>
       <button id="quick-deceased-filter" type="button" class="shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'deceased' ? 'bg-rose-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Deceased</button>`;
 
@@ -250,12 +263,9 @@
       const w = Number(s.scope.split(':')[1]);
       state.selectedZone = w <= 7 ? 'east' : 'west'; state.selectedWard = w; state.pageLimit = 50; renderAll();
     });
-    bar.querySelector('#quick-auto-filter')?.addEventListener('click', () => {
-      state.fSpecial = state.fSpecial === 'auto_needed' ? 'all' : 'auto_needed'; state.pageLimit = 50; renderAll();
-    });
-    bar.querySelector('#quick-deceased-filter')?.addEventListener('click', () => {
-      state.fSpecial = state.fSpecial === 'deceased' ? 'all' : 'deceased'; state.pageLimit = 50; renderAll();
-    });
+    bar.querySelector('#quick-bus-filter')?.addEventListener('click', () => jumpToSpecialFilter('bus_needed'));
+    bar.querySelector('#quick-auto-filter')?.addEventListener('click', () => jumpToSpecialFilter('auto_needed'));
+    bar.querySelector('#quick-deceased-filter')?.addEventListener('click', () => jumpToSpecialFilter('deceased'));
   }
 
   const origRenderVoterRow = window.renderVoterRow;
@@ -285,8 +295,10 @@
     let html = typeof origRenderVoterRow === 'function' ? origRenderVoterRow(v) : '';
     const c = window.getCamp(v.gp);
     const badges = [];
-    if (c.deceased) badges.push('<span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">Deceased</span>');
+    if (c.voterPhone) badges.push(`<a href="tel:${c.voterPhone.replace(/[^0-9+]/g, '')}" onclick="event.stopPropagation()" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">📞 ${c.voterPhone}</a>`);
+    if (c.busNeeded) badges.push('<span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-900 border border-cyan-300">Bus Needed</span>');
     if (c.autoNeeded) badges.push('<span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">Auto Needed</span>');
+    if (c.deceased) badges.push('<span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">Deceased</span>');
     if (c.location === 'outside_country') badges.push(`<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800">Outside Country${c.city ? ': ' + c.city : ''}</span>`);
     else if (c.location === 'outside_village' && c.city) badges.push(`<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-800">Outside: ${c.city}</span>`);
 
@@ -331,7 +343,7 @@
           </div>
         </div>
         <div class="mt-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
-          Campaign details (support, delivery, notes) for Ward ${v.ward} are restricted to Admin and Ward ${v.ward} members.
+          Campaign details (support, phone, transport, notes) for Ward ${v.ward} are restricted to Admin and Ward ${v.ward} members.
         </div>`;
       ro.classList.remove('hidden');
       return;
@@ -357,16 +369,33 @@
       panel.id = 'v3-extra-fields';
       panel.className = 'mt-3 p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-3';
       panel.innerHTML = `
-        <div class="text-xs font-extrabold uppercase tracking-wide text-indigo-800">Status, Location &amp; Election-Day Logistics</div>
-        <div class="grid grid-cols-2 gap-2">
-          <label class="flex items-center gap-2 p-2.5 rounded-xl bg-white border ${c.deceased ? 'border-rose-400 bg-rose-50' : 'border-slate-200'} cursor-pointer text-xs font-bold">
-            <input id="v3-deceased" type="checkbox" ${c.deceased ? 'checked' : ''} class="w-4 h-4 accent-rose-600" />
-            <span>Deceased (మరణించారు)</span>
+        <div class="text-xs font-extrabold uppercase tracking-wide text-indigo-800">Phone, Status &amp; Election-Day Transport</div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Voter Phone Number</label>
+          <div class="flex gap-2">
+            <input id="v3-voter-phone" type="tel" value="${(c.voterPhone || '').replace(/"/g, '&quot;')}" placeholder="Enter 10-digit mobile number"
+              class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white" />
+            ${c.voterPhone ? `<a href="tel:${c.voterPhone.replace(/[^0-9+]/g, '')}" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Call</a>` : ''}
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <label class="flex items-center gap-1.5 p-2 rounded-xl bg-white border ${c.busNeeded ? 'border-cyan-400 bg-cyan-50' : 'border-slate-200'} cursor-pointer text-[11px] font-bold">
+            <input id="v3-bus" type="checkbox" ${c.busNeeded ? 'checked' : ''} class="w-4 h-4 accent-cyan-600" />
+            <span>Bus Needed</span>
           </label>
-          <label class="flex items-center gap-2 p-2.5 rounded-xl bg-white border ${c.autoNeeded ? 'border-amber-400 bg-amber-50' : 'border-slate-200'} cursor-pointer text-xs font-bold">
+          <label class="flex items-center gap-1.5 p-2 rounded-xl bg-white border ${c.autoNeeded ? 'border-amber-400 bg-amber-50' : 'border-slate-200'} cursor-pointer text-[11px] font-bold">
             <input id="v3-auto" type="checkbox" ${c.autoNeeded ? 'checked' : ''} class="w-4 h-4 accent-amber-600" />
-            <span>Auto Needed (ఆటో కావాలి)</span>
+            <span>Auto Needed</span>
           </label>
+          <label class="flex items-center gap-1.5 p-2 rounded-xl bg-white border ${c.deceased ? 'border-rose-400 bg-rose-50' : 'border-slate-200'} cursor-pointer text-[11px] font-bold">
+            <input id="v3-deceased" type="checkbox" ${c.deceased ? 'checked' : ''} class="w-4 h-4 accent-rose-600" />
+            <span>Deceased</span>
+          </label>
+        </div>
+        <div id="v3-bus-note-wrap" class="${c.busNeeded ? '' : 'hidden'}">
+          <label class="block text-[11px] font-bold text-cyan-900 mb-1">Bus Route / Pickup Note</label>
+          <input id="v3-bus-note" type="text" value="${(c.busNote || '').replace(/"/g, '&quot;')}" placeholder="e.g. From Hyderabad KPHB / Guntur Bus Stand"
+            class="w-full px-3 py-2 text-xs rounded-xl border border-cyan-300 bg-white" />
         </div>
         <div id="v3-auto-note-wrap" class="${c.autoNeeded ? '' : 'hidden'}">
           <label class="block text-[11px] font-bold text-amber-900 mb-1">Auto Pickup Note / Landmark</label>
@@ -389,12 +418,18 @@
         ${auditLine}`;
       body.appendChild(panel);
 
-      panel.querySelector('#v3-deceased').addEventListener('change', (e) => { window.setCamp(v.gp, { deceased: e.target.checked }); renderAll(); });
+      panel.querySelector('#v3-voter-phone').addEventListener('change', (e) => { window.setCamp(v.gp, { voterPhone: e.target.value.trim() }); renderAll(); });
+      panel.querySelector('#v3-bus').addEventListener('change', (e) => {
+        panel.querySelector('#v3-bus-note-wrap').classList.toggle('hidden', !e.target.checked);
+        window.setCamp(v.gp, { busNeeded: e.target.checked }); renderAll();
+      });
+      panel.querySelector('#v3-bus-note').addEventListener('change', (e) => { window.setCamp(v.gp, { busNote: e.target.value.trim() }); });
       panel.querySelector('#v3-auto').addEventListener('change', (e) => {
         panel.querySelector('#v3-auto-note-wrap').classList.toggle('hidden', !e.target.checked);
         window.setCamp(v.gp, { autoNeeded: e.target.checked }); renderAll();
       });
       panel.querySelector('#v3-auto-note').addEventListener('change', (e) => { window.setCamp(v.gp, { autoNote: e.target.value.trim() }); });
+      panel.querySelector('#v3-deceased').addEventListener('change', (e) => { window.setCamp(v.gp, { deceased: e.target.checked }); renderAll(); });
       panel.querySelectorAll('.v3-loc-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const nl = btn.dataset.v3Loc;
@@ -419,7 +454,7 @@
   };
 
   function computeStats(list) {
-    let male = 0, female = 0, delivered = 0, contacted = 0, pro = 0, swing = 0, against = 0, deceased = 0, autoNeeded = 0, outCountry = 0;
+    let male = 0, female = 0, delivered = 0, contacted = 0, pro = 0, swing = 0, against = 0, deceased = 0, autoNeeded = 0, busNeeded = 0, outCountry = 0, outVillage = 0, withPhone = 0;
     for (const v of list) {
       if (v.gender === 'పు') male++; else if (v.gender === 'స్త్రీ') female++;
       if (!window.canAccessCampaignForWard(v.ward)) continue;
@@ -429,9 +464,12 @@
       if (c.support === 'pro') pro++; else if (c.support === 'swing') swing++; else if (c.support === 'against') against++;
       if (c.deceased) deceased++;
       if (c.autoNeeded) autoNeeded++;
+      if (c.busNeeded) busNeeded++;
+      if (c.voterPhone && c.voterPhone.trim()) withPhone++;
       if (c.location === 'outside_country') outCountry++;
+      else if (c.location === 'outside_village') outVillage++;
     }
-    return { total: list.length, male, female, delivered, contacted, pro, swing, against, deceased, autoNeeded, outCountry };
+    return { total: list.length, male, female, delivered, contacted, pro, swing, against, deceased, autoNeeded, busNeeded, outCountry, outVillage, withPhone };
   }
 
   function renderWardStatsBanner() {
@@ -463,9 +501,10 @@
     banner.innerHTML = `
       <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2">
         <span class="text-xs font-extrabold text-indigo-800">${scopeLabel} Stats</span>
-        <div class="flex items-center gap-1.5 text-[11px] font-bold">
-          <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">Auto: ${st.autoNeeded}</span>
-          <span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">Deceased: ${st.deceased}</span>
+        <div class="flex flex-wrap items-center gap-1 text-[11px] font-bold">
+          <button type="button" data-stat-filter="bus_needed" class="px-2 py-0.5 rounded-full ${state.fSpecial === 'bus_needed' ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-900'}">Bus: ${st.busNeeded}</button>
+          <button type="button" data-stat-filter="auto_needed" class="px-2 py-0.5 rounded-full ${state.fSpecial === 'auto_needed' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'}">Auto: ${st.autoNeeded}</button>
+          <button type="button" data-stat-filter="deceased" class="px-2 py-0.5 rounded-full ${state.fSpecial === 'deceased' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-800'}">Deceased: ${st.deceased}</button>
           <span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">Abroad: ${st.outCountry}</span>
         </div>
       </div>
@@ -475,6 +514,58 @@
         <div class="bg-blue-50 rounded-xl p-1.5 border border-blue-100"><div class="font-extrabold text-blue-700">${st.contacted}</div><div class="text-[10px] text-blue-700">Contacted</div></div>
         <div class="bg-indigo-50 rounded-xl p-1.5 border border-indigo-100"><div class="font-extrabold text-indigo-800">${st.pro}/${st.swing}/${st.against}</div><div class="text-[10px] text-indigo-700">Pro/Sw/Opp</div></div>
       </div>`;
+    banner.querySelectorAll('[data-stat-filter]').forEach(btn => {
+      btn.addEventListener('click', () => jumpToSpecialFilter(btn.dataset.statFilter));
+    });
+  }
+
+  function renderDashboardLogisticsCard() {
+    if (state.activeTab !== 'dashboard') return;
+    const dashContainer = document.getElementById('view-dashboard') || document.getElementById('tab-dashboard') || document.querySelector('main');
+    if (!dashContainer) return;
+    let card = document.getElementById('v4-dash-logistics');
+    if (card) card.remove();
+
+    const pool = typeof getWardVoters === 'function' ? getWardVoters() : [];
+    const st = computeStats(pool);
+    card = document.createElement('div');
+    card.id = 'v4-dash-logistics';
+    card.className = 'mb-3 bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs space-y-2.5';
+    card.innerHTML = `
+      <div class="flex items-center justify-between">
+        <h3 class="text-xs font-extrabold uppercase tracking-wide text-indigo-800">Election-Day Transport &amp; Contacts (Tap to Filter)</h3>
+        <span class="text-[11px] font-bold text-emerald-700">📞 Phones Saved: ${st.withPhone}</span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+        <button type="button" data-dash-filter="bus_needed" class="p-2.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 transition">
+          <div class="text-lg font-extrabold text-cyan-900">${st.busNeeded}</div>
+          <div class="text-[11px] font-bold text-cyan-800">Bus Needed</div>
+        </button>
+        <button type="button" data-dash-filter="auto_needed" class="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 transition">
+          <div class="text-lg font-extrabold text-amber-900">${st.autoNeeded}</div>
+          <div class="text-[11px] font-bold text-amber-800">Auto Needed</div>
+        </button>
+        <button type="button" data-dash-filter="deceased" class="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 transition">
+          <div class="text-lg font-extrabold text-rose-800">${st.deceased}</div>
+          <div class="text-[11px] font-bold text-rose-700">Deceased</div>
+        </button>
+        <div class="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
+          <div class="text-lg font-extrabold text-purple-900">${st.outVillage} / ${st.outCountry}</div>
+          <div class="text-[11px] font-bold text-purple-800">Out Village / Country</div>
+        </div>
+      </div>`;
+    const anchor = document.getElementById('ward-contestant-banner') || document.getElementById('ward-stats-banner');
+    if (anchor && anchor.parentElement) anchor.insertAdjacentElement('afterend', card);
+    else dashContainer.prepend(card);
+
+    card.querySelectorAll('[data-dash-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.fSpecial = btn.dataset.dashFilter;
+        state.activeTab = 'families';
+        state.pageLimit = 50;
+        renderAll();
+      });
+    });
   }
 
   function wireSyncModalButton() {
@@ -504,6 +595,9 @@
     renderCompactWardBar();
     renderWardStatsBanner();
     if (typeof window.renderActiveWardContestantBanner === 'function') window.renderActiveWardContestantBanner();
+    const oldDash = document.getElementById('v4-dash-logistics');
+    if (oldDash) oldDash.remove();
+    renderDashboardLogisticsCard();
   };
 
   function boot() {
