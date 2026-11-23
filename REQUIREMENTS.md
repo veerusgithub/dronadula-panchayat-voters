@@ -25,3 +25,5 @@
 9. Bidirectional phone localStorage rescue sync + per-user audit log.
 10. Mandatory login gate; Admin sees all wards' campaign marks; team members edit only their mapped ward and see read-only basic voter info in other wards.
 11. Living `REQUIREMENTS.md` tracked in repository.
+12. Bus Needed & Auto Needed counts on Dashboard with one-tap filtering, plus Bus/Auto/Deceased quick filters in the ward bar.
+13. Phone number input & tap-to-call links for each voter (`voterPhone`, searchable) and each Village President / Ward contestant (`phone`), plus compact non-sticky header with multi-row ward pills hidden on all screens.
