@@ -1,4 +1,4 @@
-// search-fix.js (v3) — Bilingual (English + Telugu + Phonetic) Search including Relation & New Filters
+// search-fix.js (v4) — Bilingual (English + Telugu + Phonetic) Search including Relation, Phone & Transport Filters
 (function () {
   'use strict';
 
@@ -117,17 +117,18 @@
     const c = canViewCamp ? getCamp(v.gp) : {
       delivered: false, phone: false, person: false, support: 'unknown',
       wish: '', location: 'in_village', ticket: 'none', city: '', unit: '',
-      deceased: false, autoNeeded: false, autoNote: ''
+      deceased: false, autoNeeded: false, autoNote: '', busNeeded: false, busNote: '', voterPhone: ''
     };
 
     const q = (state.search || '').trim().toLowerCase();
     if (q) {
       const idx = window.ensureSearchIndex(v);
-      const extra = canViewCamp ? `${c.unit || ''} ${c.wish || ''} ${c.city || ''} ${c.autoNote || ''}`.toLowerCase() : '';
+      const extra = canViewCamp ? `${c.unit || ''} ${c.wish || ''} ${c.city || ''} ${c.autoNote || ''} ${c.busNote || ''} ${c.voterPhone || ''}`.toLowerCase() : '';
+      const extraCompact = extra.replace(/[\s\-+]/g, '');
       const extraPhon = extra.trim() ? window.phoneticNorm(extra) : '';
       const tokens = q.split(/\s+/).filter(Boolean);
       const ok = tokens.every(tok => {
-        if (idx.raw.includes(tok) || idx.rawCompact.includes(tok) || (extra && extra.includes(tok))) return true;
+        if (idx.raw.includes(tok) || idx.rawCompact.includes(tok) || (extra && (extra.includes(tok) || extraCompact.includes(tok)))) return true;
         const tokLat = window.teToLatin(tok);
         const tokLatC = tokLat.replace(/\s+/g, '');
         if (tokLat && (idx.lat.includes(tokLat) || idx.latCompact.includes(tokLatC))) return true;
@@ -173,6 +174,7 @@
     if (state.fSpecial === 'deceased' && !c.deceased) return false;
     if (state.fSpecial === 'alive_only' && c.deceased) return false;
     if (state.fSpecial === 'auto_needed' && !c.autoNeeded) return false;
+    if (state.fSpecial === 'bus_needed' && !c.busNeeded) return false;
 
     return true;
   };
