@@ -1,37 +1,27 @@
 # Dronadula Panchayat Voters — Requirements & Architecture
 
-## Live App & Repository
-- **GitHub Repository:** `https://github.com/veerusgithub/dronadula-panchayat-voters` (Owner/Admin: `veerusgithub`, Branch: `main`)
-- **Live Site (GitHub Pages):** `https://veerusgithub.github.io/dronadula-panchayat-voters/`
-- **Firebase Realtime Database:** `https://voter-list-17964-default-rtdb.firebaseio.com` (Room: `dronadula_main`)
-- **App Display Name (Telugu):** `ద్రోణాదుల పంచాయతీ ఓటర్లు` (README & docs in English)
-- **Dataset:** 14 Wards, 5,655 Voters (East Wards 1–7: 2,821; West Wards 8–14: 2,834), 5,652 WebP photos.
+**App Name (Telugu):** ద్రోణాదుల పంచాయతీ ఓటర్లు  
+**Repository:** `https://github.com/veerusgithub/dronadula-panchayat-voters` (`main` branch)  
+**Live Site:** `https://veerusgithub.github.io/dronadula-panchayat-voters/`  
+**Firebase Realtime Database:** `https://voter-list-17964-default-rtdb.firebaseio.com` (Room: `dronadula_main`)  
+**Dataset:** 104-Parchur Assembly, Martur Mandal, Bapatla District — **14 Wards, 5,655 Voters** (East Wards 1–7: 2,821; West Wards 8–14: 2,834), **5,652 WebP Photos**.
 
-## Modular File Structure (`main`)
-- `index.html` — Entry shell loading modular data and JS scripts.
-- `data/voters-east.js`, `data/voters-west.js`, `data/photos-w1.js`..`w14.js` — Voter and photo datasets.
-- `app.js` — Core UI (Dashboard, Families, Serials, Lineage/Dups, English/Telugu toggle).
-- `search-fix.js` — Bilingual English + Telugu phonetic search (`teToLatin`, `phoneticNorm`).
-- `features-v2.js` — Enhanced duplicate detection (Name + Relation + Age + Canvas photo cross-check), auto Firebase sync (`PATCH` + timestamp merge), Ward Stats banner, Dashboard East/West & ward-wise summary.
-- `auth-admin.js` — Login gate with `veerusgithub` as Admin (SHA-256 PIN) and Admin Panel.
+## Modular File Structure
+- `index.html`: App shell loading data modules, `app.js`, and modular scripts (`search-fix.js?v=3`, `features-v3.js?v=3`, `auth-admin.js?v=4`, `contestants-info.js?v=2`).
+- `search-fix.js`: Bilingual English + Telugu + phonetic search including relation name/type (`father`/`husband`/`mother`/`తండ్రి`/`భర్త`/`తల్లి`), city, deceased, autoNeeded, and ward privacy masking.
+- `features-v3.js`: Auto-connected bidirectional Firebase sync, per-user audit logging (`updatedBy` + `auditLog`), Admin 5,655-voter Firebase backup, Deceased / Outside Village / Outside Country + City / Election-Day Auto Needed fields, compact mobile ward dropdown, and ward-level campaign visibility masking.
+- `auth-admin.js`: Mandatory login gate blocking app until signed in, self-service New User Sign Up + Admin (`veerusgithub`) approval workflow & ward mapping.
+- `contestants-info.js`: Village President (Sarpanch) & Ward 1–14 contestants with symbols synced to Firebase.
 
-## Completed Requirements
-- [x] Merged East (Wards 1–7) and West (Wards 8–14) voter lists with top East/West filter and 14-ward selector.
-- [x] Fixed bilingual English/Telugu phonetic search.
-- [x] Enhanced duplicate detection (Name + Relation Name + Age + photo cross-check).
-- [x] Added Login Gate with `veerusgithub` as Repo Owner Admin + Admin Panel.
-- [x] Connected Firebase Realtime Database automatically (`https://voter-list-17964-default-rtdb.firebaseio.com`) with non-destructive `PATCH` sync.
-- [x] Added Ward-wise statistics banner and East vs. West Dashboard breakdown.
-
-## Active Enhancement Backlog
-1. **Automatic Firebase Sync & Full Voter DB Seed:** Keep automatic Firebase connection without manual user setup; never lose data on redeployment; support uploading all 5,655 voters and their statuses into Firebase.
-2. **User Self-Signup & Admin Approval:** Allow new team members to register/request access on the login screen; Admin (`veerusgithub`) reviews and approves/rejects pending sign-ins.
-3. **Deceased Voter Status:** Add option to mark a voter as deceased (with filter and count).
-4. **Outside Country + Outside Village + City/Country Field:** Support `In Village`, `Outside Village`, and `Outside Country`, with a city/location name input whenever `Outside Village` or `Outside Country` is selected.
-5. **Election-Day Auto / Transport Flag:** Add an option to mark elderly/needy voters who require an auto on election day, with quick filtering to remember them.
-6. **Search by Relation:** Extend search to match relation type (Father/Husband/Mother/తండ్రి/భర్త/తల్లి) alongside relation name.
-7. **Ward Contestants & Village President Contestants:** Allow adding contestant names and symbols for each ward (Wards 1–14) as well as Village President (Sarpanch) contestants for the entire village.
-8. **Mobile Header / Ward Selector Optimization:** Compact the mobile header and ward selector so it does not occupy 3/4 of the mobile viewport.
-9. **Sync Existing Phone Local Data + User Audit Logging:** Automatically merge-push existing local phone data (`sliptrack_dronadula_v3`) into Firebase; on every edit, persist to both `localStorage` and Firebase and log who made the update (`updatedBy`, timestamp).
-10. **Role-Based Visibility & Contestant Ward Mapping:** Map logged-in users to their assigned contestant/ward. Only Admin can see all wards' marked sensitive attributes (such as Pro/Swing/Against); non-admin users can view basic voter info while sensitive campaign attributes are restricted.
-11. **Living Requirements Doc:** Keep `REQUIREMENTS.md` updated in the repository for continuity across sessions/agents.
+## Implemented Requirements Checklist
+1. Auto-Firebase sync & zero data loss + Admin 5,655-voter Firebase backup.
+2. Self-service user signup + Admin (`veerusgithub`) approval & ward assignment.
+3. Deceased voter option + badge + filter.
+4. Outside Village & Outside Country options with City/Country input.
+5. Election-day Auto Needed option + pickup note + filter + count.
+6. Search by relation name and relation type.
+7. Ward (1–14) & Village President (Sarpanch) contestants with symbols.
+8. Compact mobile single-row Ward dropdown selector.
+9. Bidirectional phone localStorage rescue sync + per-user audit log.
+10. Mandatory login gate; Admin sees all wards' campaign marks; team members edit only their mapped ward and see read-only basic voter info in other wards.
+11. Living `REQUIREMENTS.md` tracked in repository.
