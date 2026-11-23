@@ -1,4 +1,4 @@
-// search-fix.js — Reliable Bilingual (English + Telugu + Phonetic) Search for Dronadula Panchayat Voters
+// search-fix.js (v3) — Bilingual English + Telugu + Relation + Status Search
 (function () {
   'use strict';
 
@@ -21,6 +21,13 @@
   };
   const TE_VIRAMA = '్';
 
+  const REL_ALIASES = {
+    'తండ్రి': 'father s/o so d/o do tandri',
+    'భర్త': 'husband w/o wo bharta',
+    'తల్లి': 'mother talli',
+    'ఇతరులు': 'other others self itarulu'
+  };
+
   window.teToLatin = function (str) {
     if (!str) return '';
     let out = '';
@@ -31,24 +38,21 @@
         out += TE_INDEP_VOWELS[ch];
       } else if (TE_CONSONANTS[ch]) {
         if (ch === 'క' && s[i + 1] === TE_VIRAMA && s[i + 2] === 'ష') {
-          out += 'ksh';
-          i += 2;
+          out += 'ksh'; i += 2;
           const nxt = s[i + 1];
-          if (nxt === TE_VIRAMA) { i++; }
+          if (nxt === TE_VIRAMA) i++;
           else if (TE_MATRAS[nxt]) { out += TE_MATRAS[nxt]; i++; }
-          else { out += 'a'; }
+          else out += 'a';
           continue;
         }
         if (ch === 'శ' && s[i + 1] === TE_VIRAMA && s[i + 2] === 'ర' && (s[i + 3] === 'ీ' || s[i + 3] === 'ి')) {
-          out += 'sri';
-          i += 3;
-          continue;
+          out += 'sri'; i += 3; continue;
         }
         out += TE_CONSONANTS[ch];
         const nxt = s[i + 1];
-        if (nxt === TE_VIRAMA) { i++; }
+        if (nxt === TE_VIRAMA) i++;
         else if (TE_MATRAS[nxt]) { out += TE_MATRAS[nxt]; i++; }
-        else { out += 'a'; }
+        else out += 'a';
       } else if (TE_MATRAS[ch]) {
         out += TE_MATRAS[ch];
       } else if (ch === 'ం' || ch === 'ఁ') {
@@ -86,11 +90,12 @@
   };
 
   window.ensureSearchIndex = function (v) {
-    if (v._sIdxV2) return v._sIdxV2;
-    const raw = `${v.gp} ${v.asm || ''} ${v.name || ''} ${v.relName || ''} ${v.house || ''} ${v.epic || ''}`.toLowerCase();
-    const lat = window.teToLatin(`${v.name || ''} ${v.relName || ''}`);
-    const phon = window.phoneticNorm(`${v.name || ''} ${v.relName || ''}`);
-    v._sIdxV2 = {
+    if (v._sIdxV3) return v._sIdxV3;
+    const relAlias = REL_ALIASES[v.relType] || '';
+    const raw = `${v.gp} ${v.asm || ''} ${v.name || ''} ${v.relType || ''} ${relAlias} ${v.relName || ''} ${v.house || ''} ${v.epic || ''}`.toLowerCase();
+    const lat = window.teToLatin(`${v.name || ''} ${v.relType || ''} ${relAlias} ${v.relName || ''}`);
+    const phon = window.phoneticNorm(`${v.name || ''} ${v.relType || ''} ${relAlias} ${v.relName || ''}`);
+    v._sIdxV3 = {
       raw,
       rawCompact: raw.replace(/\s+/g, ''),
       lat,
@@ -99,7 +104,7 @@
       phonCompact: phon.replace(/\s+/g, ''),
       phonNoA: window.phoneticNoSchwa(phon)
     };
-    return v._sIdxV2;
+    return v._sIdxV3;
   };
 
   window.matchesAllCriteria = function (v) {
@@ -107,7 +112,13 @@
     const q = (state.search || '').trim().toLowerCase();
     if (q) {
       const idx = window.ensureSearchIndex(v);
-      const extra = `${c.unit || ''} ${c.wish || ''} ${c.city || ''}`.toLowerCase();
+      const statusTags = [
+        c.deceased ? 'deceased expired dead మరణించారు' : '',
+        c.autoNeeded ? 'auto transport elderly ఆటో' : '',
+        c.location === 'outside_country' ? 'country abroad foreign విదేశాల్లో' : '',
+        c.location === 'outside' ? 'outside village గ్రామం బయట' : ''
+      ].join(' ');
+      const extra = `${c.unit || ''} ${c.wish || ''} ${c.city || ''} ${c.autoNote || ''} ${statusTags}`.toLowerCase();
       const extraPhon = extra.trim() ? window.phoneticNorm(extra) : '';
       const tokens = q.split(/\s+/).filter(Boolean);
       const ok = tokens.every(tok => {
@@ -129,6 +140,11 @@
       if (!ok) return false;
     }
 
+    if (window._quickFilter === 'auto' && !c.autoNeeded) return false;
+    if (window._quickFilter === 'deceased' && !c.deceased) return false;
+    if (window._quickFilter === 'outside_country' && c.location !== 'outside_country') return false;
+    if (window._quickFilter === 'outside_village' && c.location !== 'outside') return false;
+
     if (state.fDelivery === 'delivered' && !c.delivered) return false;
     if (state.fDelivery === 'pending' && c.delivered) return false;
     if (state.fContact === 'phone' && !c.phone) return false;
@@ -137,9 +153,10 @@
     if (state.fContact === 'none' && (c.phone || c.person)) return false;
     if (state.fSupport !== 'all' && c.support !== state.fSupport) return false;
     if (state.fLocation === 'in_village' && c.location !== 'in_village') return false;
-    if (state.fLocation === 'outside' && c.location !== 'outside') return false;
-    if (state.fLocation === 'ticket_yes' && !(c.location === 'outside' && (c.ticket === 'promised' || c.ticket === 'sent'))) return false;
-    if (state.fLocation === 'ticket_no' && !(c.location === 'outside' && c.ticket === 'none')) return false;
+    if (state.fLocation === 'outside' && c.location !== 'outside' && c.location !== 'outside_country') return false;
+    if (state.fLocation === 'outside_country' && c.location !== 'outside_country') return false;
+    if (state.fLocation === 'ticket_yes' && !((c.location === 'outside' || c.location === 'outside_country') && (c.ticket === 'promised' || c.ticket === 'sent'))) return false;
+    if (state.fLocation === 'ticket_no' && !((c.location === 'outside' || c.location === 'outside_country') && c.ticket === 'none')) return false;
     return true;
   };
 })();
