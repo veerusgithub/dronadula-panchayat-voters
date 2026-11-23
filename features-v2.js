@@ -15,7 +15,7 @@
           fbConfig.room = parsed.room || DEFAULT_ROOM;
         }
       }
-      if (typeof fbConfig !== 'undefined' && fbConfig.url) {
+      if (typeof fbConfig !== 'undefined' && (!fbConfig.url || !fbConfig.url.trim())) { fbConfig.url = 'https://voter-list-17964-default-rtdb.firebaseio.com'; fbConfig.room = fbConfig.room || (typeof DEFAULT_ROOM !== 'undefined' ? DEFAULT_ROOM : 'dronadula_main'); } if (typeof fbConfig !== 'undefined' && fbConfig.url) {
         localStorage.setItem(FB_PERSIST_KEY, JSON.stringify(fbConfig));
       }
     } catch (e) {}
@@ -360,7 +360,7 @@
 
   window.addEventListener('DOMContentLoaded', () => {
     restorePersistentFbConfig();
-    if (typeof fbConfig !== 'undefined' && fbConfig.url) window.pullFromFirebase(false);
+    if (typeof fbConfig !== 'undefined' && fbConfig.url) { if (typeof startLiveSync === 'function') startLiveSync(); else window.pullFromFirebase(false); }
     renderWardStatsBanner();
   });
 })(); {
