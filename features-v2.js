@@ -277,19 +277,19 @@
     const scopeTitle = state.selectedWard !== 'all'
       ? `Ward ${state.selectedWard} Stats`
       : (state.selectedZone === 'east' ? 'East (Wards 1–7) Stats' : state.selectedZone === 'west' ? 'West (Wards 8–14) Stats' : 'All Panchayat (14 Wards) Stats');
-    el.classList.remove('hidden');
+    el.classList.remove('hidden'); const isTeam = typeof window.isTeamLoggedIn === 'function' && window.isTeamLoggedIn();
     el.innerHTML = `
       <div class="bg-white rounded-2xl border border-slate-200 px-3 py-2 shadow-xs">
         <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
           <span class="text-[11px] font-extrabold text-indigo-800 uppercase tracking-wide">${scopeTitle}</span>
           <span class="text-[11px] font-bold text-slate-600">Total: <b class="text-slate-900">${s.total.toLocaleString()}</b> (M: ${s.male} · F: ${s.female}${s.other ? ' · O: ' + s.other : ''})</span>
         </div>
-        <div class="grid grid-cols-5 gap-1 text-center text-[10px]">
+        <div class="grid ${isTeam ? ' grid-cols-5' : 'grid-cols-2'} gap-1 text-center text-[10px]">
           <div class="bg-emerald-50 border border-emerald-200 rounded-lg py-1"><div class="font-extrabold text-emerald-700">${s.delivered} (${s.pct}%)</div><div class="text-emerald-700/80 font-semibold">Given</div></div>
           <div class="bg-indigo-50 border border-indigo-200 rounded-lg py-1"><div class="font-extrabold text-indigo-700">${s.contacted}</div><div class="text-indigo-700/80 font-semibold">Contact</div></div>
-          <div class="bg-green-50 border border-green-200 rounded-lg py-1"><div class="font-extrabold text-green-700">${s.pro}</div><div class="text-green-700/80 font-semibold">Pro</div></div>
+          ${isTeam ? `<div class="bg-green-50 border border-green-200 rounded-lg py-1"><div class="font-extrabold text-green-700">${s.pro}</div><div class="text-green-700/80 font-semibold">Pro</div></div>
           <div class="bg-amber-50 border border-amber-200 rounded-lg py-1"><div class="font-extrabold text-amber-700">${s.swing}</div><div class="text-amber-700/80 font-semibold">Swing</div></div>
-          <div class="bg-rose-50 border border-rose-200 rounded-lg py-1"><div class="font-extrabold text-rose-700">${s.against}</div><div class="text-rose-700/80 font-semibold">Opp</div></div>
+          <div class="bg-rose-50 border border-rose-200 rounded-lg py-1"><div class="font-extrabold text-rose-700">${s.against}</div><div class="text-rose-700/80 font-semibold">Opp</div></div>` : ''}
         </div>
       </div>`;
   }
@@ -303,7 +303,7 @@
     const westS = calcPoolStats(state.voters.filter(v => v.ward >= 8 && v.ward <= 14));
     const wards = getZoneWards(state.selectedZone);
     const wardDetails = wards.map(w => ({ w, ...calcPoolStats(state.voters.filter(v => v.ward === w)) }));
-    const tot = calcPoolStats(getZoneVoters(state.selectedZone));
+    const tot = calcPoolStats(getZoneVoters(state.selectedZone)); const isTeam = typeof window.isTeamLoggedIn === 'function' && window.isTeamLoggedIn();
 
     wrap.insertAdjacentHTML('beforeend', `
       <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-xs space-y-2.5">
@@ -313,22 +313,22 @@
             <div class="font-extrabold text-indigo-800">East (Wards 1–7)</div>
             <div class="text-[11px] text-slate-700">Total: <b>${eastS.total.toLocaleString()}</b> (M: ${eastS.male}, F: ${eastS.female})</div>
             <div class="text-[11px] text-emerald-700 font-bold">Given: ${eastS.delivered} (${eastS.pct}%)</div>
-            <div class="text-[10px] text-slate-600">Pro: <b>${eastS.pro}</b> · Swing: <b>${eastS.swing}</b> · Opp: <b>${eastS.against}</b></div>
+           ${isTeam ? ` <div class="text-[10px] text-slate-600">Pro: <b>${eastS.pro}</b> · Swing: <b>${eastS.swing}</b> · Opp: <b>${eastS.against}</b></div>` : ''}
           </div>
           <div class="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1">
             <div class="font-extrabold text-amber-900">West (Wards 8–14)</div>
             <div class="text-[11px] text-slate-700">Total: <b>${westS.total.toLocaleString()}</b> (M: ${westS.male}, F: ${westS.female})</div>
             <div class="text-[11px] text-emerald-700 font-bold">Given: ${westS.delivered} (${westS.pct}%)</div>
-            <div class="text-[10px] text-slate-600">Pro: <b>${westS.pro}</b> · Swing: <b>${westS.swing}</b> · Opp: <b>${westS.against}</b></div>
+           ${isTeam ? ` <div class="text-[10px] text-slate-600">Pro: <b>${westS.pro}</b> · Swing: <b>${westS.swing}</b> · Opp: <b>${westS.against}</b></div>` : ''}
           </div>
         </div>
       </div>
       <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        <div class="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-extrabold text-slate-700 uppercase">Detailed Ward-Wise Stats (M/F · Delivery % · Leaning)</div>
+        <div class="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-extrabold text-slate-700 uppercase">Detailed Ward-Wise Stats (M/F · Delivery %${isTeam ? ' · Leaning' : ''})</div>
         <div class="overflow-x-auto">
           <table class="w-full text-xs text-left">
             <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
-              <tr><th class="py-2 px-2.5">Ward</th><th class="py-2 px-2">Total</th><th class="py-2 px-2">M / F</th><th class="py-2 px-2">Given %</th><th class="py-2 px-2 text-emerald-700">Pro</th><th class="py-2 px-2 text-amber-700">Swing</th><th class="py-2 px-2 text-rose-700">Opp</th></tr>
+              <tr><th class="py-2 px-2.5">Ward</th><th class="py-2 px-2">Total</th><th class="py-2 px-2">M / F</th><th class="py-2 px-2">Given %</th>${isTeam ? `<th class="py-2 px-2 text-emerald-700">Pro</th><th class="py-2 px-2 text-amber-700">Swing</th><th class="py-2 px-2 text-rose-700">Opp</th>` : ''}</tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               ${wardDetails.map(r => `
@@ -337,14 +337,14 @@
                   <td class="py-2 px-2 font-bold">${r.total}</td>
                   <td class="py-2 px-2 text-slate-600">${r.male}/${r.female}</td>
                   <td class="py-2 px-2 font-semibold">${r.delivered} (${r.pct}%)</td>
-                  <td class="py-2 px-2 font-bold text-emerald-700">${r.pro}</td>
+              ${isTeam ? `    <td class="py-2 px-2 font-bold text-emerald-700">${r.pro}</td>
                   <td class="py-2 px-2 font-bold text-amber-700">${r.swing}</td>
-                  <td class="py-2 px-2 font-bold text-rose-700">${r.against}</td>
+                  <td class="py-2 px-2 font-bold text-rose-700">${r.against}</td>` : ''}
                 </tr>`).join('')}
               <tr class="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
                 <td class="py-2 px-2.5">Total</td><td class="py-2 px-2">${tot.total.toLocaleString()}</td><td class="py-2 px-2">${tot.male}/${tot.female}</td>
-                <td class="py-2 px-2">${tot.delivered} (${tot.pct}%)</td><td class="py-2 px-2 text-emerald-800">${tot.pro}</td>
-                <td class="py-2 px-2 text-amber-800">${tot.swing}</td><td class="py-2 px-2 text-rose-800">${tot.against}</td>
+                <td class="py-2 px-2">${tot.delivered} (${tot.pct}%)</td>${isTeam ? `<td class="py-2 px-2 text-emerald-800">${tot.pro}</td>
+                <td class="py-2 px-2 text-amber-800">${tot.swing}</td><td class="py-2 px-2 text-rose-800">${tot.against}</td>` : ''}
               </tr>
             </tbody>
           </table>
