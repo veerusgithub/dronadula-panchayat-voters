@@ -1,4 +1,4 @@
-// contestants-info.js (v2) — Village President (Sarpanch) & Ward 1–14 Contestants + Symbols (Firebase Synced)
+// contestants-info.js (v3) — Village President (Sarpanch) & Ward 1–14 Contestants + Symbols + Phone Numbers
 (function () {
   'use strict';
 
@@ -51,6 +51,12 @@
     return !!(s && s.role === 'admin');
   }
 
+  function phoneLink(ph) {
+    if (!ph) return '';
+    const clean = String(ph).replace(/[^0-9+]/g, '');
+    return ` <a href="tel:${clean}" class="text-emerald-700 font-bold underline ml-1">📞 ${ph}</a>`;
+  }
+
   window.renderActiveWardContestantBanner = function () {
     const main = document.querySelector('main');
     if (!main) return;
@@ -75,10 +81,10 @@
 
     const parts = [];
     if (wardList.length) {
-      parts.push(`<div><span class="font-extrabold text-indigo-900">Ward ${w} Contestants:</span> ${wardList.map(c => `<span class="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-indigo-200 font-bold text-slate-800 ml-1">${c.symbolIcon || ''} ${c.name} <span class="text-indigo-700 font-normal">(${c.symbol || 'Symbol'})</span></span>`).join('')}</div>`);
+      parts.push(`<div><span class="font-extrabold text-indigo-900">Ward ${w} Contestants:</span> ${wardList.map(c => `<span class="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-indigo-200 font-bold text-slate-800 ml-1">${c.symbolIcon || ''} ${c.name} <span class="text-indigo-700 font-normal">(${c.symbol || 'Symbol'})</span>${phoneLink(c.phone)}</span>`).join('')}</div>`);
     }
     if (presList.length) {
-      parts.push(`<div><span class="font-extrabold text-amber-900">Village President:</span> ${presList.map(c => `<span class="inline-flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 font-bold text-slate-900 ml-1">${c.symbolIcon || ''} ${c.name} <span class="text-amber-900 font-normal">(${c.symbol || 'Symbol'})</span></span>`).join('')}</div>`);
+      parts.push(`<div><span class="font-extrabold text-amber-900">Village President:</span> ${presList.map(c => `<span class="inline-flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 font-bold text-slate-900 ml-1">${c.symbolIcon || ''} ${c.name} <span class="text-amber-900 font-normal">(${c.symbol || 'Symbol'})</span>${phoneLink(c.phone)}</span>`).join('')}</div>`);
     }
     el.innerHTML = parts.join('');
   };
@@ -95,7 +101,7 @@
           <div class="flex items-center justify-between gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs">
             <div>
               <div class="font-extrabold text-slate-900">${c.symbolIcon || '🏛️'} ${c.name}</div>
-              <div class="text-[11px] text-amber-900">Symbol: <b>${c.symbol || '-'}</b>${c.party ? ' · ' + c.party : ''}</div>
+              <div class="text-[11px] text-amber-900">Symbol: <b>${c.symbol || '-'}</b>${c.party ? ' · ' + c.party : ''}${phoneLink(c.phone)}</div>
             </div>
             ${adminMode ? `<button type="button" data-del-pres="${id}" class="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 font-bold text-[11px]">Delete</button>` : ''}
           </div>`).join('')
@@ -111,7 +117,7 @@
           <div class="text-[11px] font-extrabold text-indigo-800 uppercase">Ward ${w}</div>
           ${entries.map(([id, c]) => `
             <div class="flex items-center justify-between gap-2 text-xs py-1 border-t border-slate-100 first:border-0">
-              <div><b>${c.symbolIcon || '🗳️'} ${c.name}</b> — <span class="text-indigo-700 font-semibold">${c.symbol || '-'}</span>${c.party ? ` <span class="text-slate-500">(${c.party})</span>` : ''}</div>
+              <div><b>${c.symbolIcon || '🗳️'} ${c.name}</b> — <span class="text-indigo-700 font-semibold">${c.symbol || '-'}</span>${c.party ? ` <span class="text-slate-500">(${c.party})</span>` : ''}${phoneLink(c.phone)}</div>
               ${adminMode ? `<button type="button" data-del-ward="${w}" data-del-id="${id}" class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-[11px]">Remove</button>` : ''}
             </div>`).join('')}
         </div>`);
@@ -174,7 +180,10 @@
                     <input id="c-symbol" type="text" required placeholder="Symbol Name (e.g. Ring)" class="col-span-2 px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white" />
                     <input id="c-icon" type="text" placeholder="Icon (e.g. 💍)" class="px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white" />
                   </div>
-                  <input id="c-party" type="text" placeholder="Panel / Group (optional)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white" />
+                  <div class="grid grid-cols-2 gap-2">
+                    <input id="c-phone" type="tel" placeholder="Phone Number (optional)" class="px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white" />
+                    <input id="c-party" type="text" placeholder="Panel / Group (optional)" class="px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white" />
+                  </div>
                   <button type="submit" class="w-full py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold">Save Contestant</button>
                 </form>
               </div>
@@ -209,10 +218,11 @@
       const name = document.getElementById('c-name').value.trim();
       const symbol = document.getElementById('c-symbol').value.trim();
       const symbolIcon = document.getElementById('c-icon').value.trim();
+      const phone = document.getElementById('c-phone').value.trim();
       const party = document.getElementById('c-party').value.trim();
       if (!name || !symbol) return;
       const id = 'c_' + Date.now().toString(36);
-      const rec = { name, symbol, symbolIcon, party, _ts: Date.now() };
+      const rec = { name, symbol, symbolIcon, phone, party, _ts: Date.now() };
       if (role === 'president') {
         contestants.president[id] = rec;
       } else {
