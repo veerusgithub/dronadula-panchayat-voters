@@ -1,5 +1,5 @@
-// features-v3.js (v4) — Auto Firebase Sync, Audit Log, Voter Phone, Bus/Auto Needed + Dashboard Counts/Filters,
-// Deceased, Outside Country + City, Compact Mobile Ward Selector & Ward Visibility Masking
+// features-v3.js (v5) — Auto Firebase Sync, Audit Log, Voter Phone, Bus/Auto Needed + Dashboard Counts/Filters,
+// Deceased, Outside Country + City, Ultra-Compact Header/Ward Selector & Ward Visibility Masking
 (function () {
   'use strict';
 
@@ -200,21 +200,18 @@
     renderAll();
   }
 
-  function injectCompactMobileCSS() {
-    if (document.getElementById('compact-mobile-style')) return;
+  function injectCompactLayoutCSS() {
+    if (document.getElementById('compact-layout-style')) return;
     const style = document.createElement('style');
-    style.id = 'compact-mobile-style';
+    style.id = 'compact-layout-style';
     style.textContent = `
-      @media (max-width: 768px) {
-        header.sticky { position: sticky; top: 0; }
-        #zone-pills { padding-top: 4px !important; padding-bottom: 4px !important; }
-        #ward-pills { display: none !important; }
-        #compact-ward-bar { display: flex !important; }
-      }
-      @media (min-width: 769px) {
-        #compact-ward-bar { display: flex !important; }
-        #ward-pills { display: flex !important; }
-      }
+      header.sticky { position: static !important; }
+      #ward-pills { display: none !important; }
+      #zone-pills { padding-top: 3px !important; padding-bottom: 3px !important; }
+      #compact-ward-bar { display: flex !important; padding-top: 3px !important; padding-bottom: 3px !important; }
+      header > div:first-child { padding-top: 6px !important; padding-bottom: 6px !important; }
+      #search-input { padding-top: 6px !important; padding-bottom: 6px !important; }
+      #ward-contestant-banner { padding: 4px 10px !important; margin-bottom: 6px !important; font-size: 11px !important; }
     `;
     document.head.appendChild(style);
   }
@@ -226,7 +223,7 @@
     if (!bar) {
       bar = document.createElement('div');
       bar.id = 'compact-ward-bar';
-      bar.className = 'max-w-4xl mx-auto px-3 py-1.5 flex items-center gap-1.5 text-xs';
+      bar.className = 'max-w-4xl mx-auto px-3 py-1 flex items-center gap-1.5 text-xs';
       wardStrip.parentElement.insertBefore(bar, wardStrip);
     }
 
@@ -245,15 +242,15 @@
 
     const s = typeof window.getCurrentAuthSession === 'function' ? window.getCurrentAuthSession() : null;
     const assignedHint = (s && s.role !== 'admin' && s.scope && s.scope.startsWith('ward:'))
-      ? `<button id="jump-my-ward" type="button" class="shrink-0 px-2 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px]">W${s.scope.split(':')[1]}</button>`
+      ? `<button id="jump-my-ward" type="button" class="shrink-0 px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px]">W${s.scope.split(':')[1]}</button>`
       : '';
 
     bar.innerHTML = `
-      <select id="compact-ward-select" class="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white text-slate-900 font-bold text-xs border border-indigo-300 focus:outline-none">${opts.join('')}</select>
+      <select id="compact-ward-select" class="flex-1 min-w-0 px-2 py-1 rounded-lg bg-white text-slate-900 font-bold text-xs border border-indigo-300 focus:outline-none">${opts.join('')}</select>
       ${assignedHint}
-      <button id="quick-bus-filter" type="button" class="shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'bus_needed' ? 'bg-cyan-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Bus</button>
-      <button id="quick-auto-filter" type="button" class="shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'auto_needed' ? 'bg-amber-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Auto</button>
-      <button id="quick-deceased-filter" type="button" class="shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'deceased' ? 'bg-rose-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Deceased</button>`;
+      <button id="quick-bus-filter" type="button" class="shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'bus_needed' ? 'bg-cyan-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Bus</button>
+      <button id="quick-auto-filter" type="button" class="shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'auto_needed' ? 'bg-amber-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Auto</button>
+      <button id="quick-deceased-filter" type="button" class="shrink-0 px-2 py-1 rounded-lg text-[11px] font-bold transition ${state.fSpecial === 'deceased' ? 'bg-rose-400 text-slate-900' : 'bg-white/15 text-indigo-100 hover:bg-white/25'}">Deceased</button>`;
 
     bar.querySelector('#compact-ward-select').addEventListener('change', (e) => {
       state.selectedWard = e.target.value === 'all' ? 'all' : Number(e.target.value);
@@ -479,7 +476,7 @@
     if (!banner) {
       banner = document.createElement('div');
       banner.id = 'ward-stats-banner';
-      banner.className = 'mb-3 bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xs';
+      banner.className = 'mb-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-xs';
       main.prepend(banner);
     }
     const pool = typeof getWardVoters === 'function' ? getWardVoters() : [];
@@ -489,30 +486,29 @@
       : window.canAccessCampaignForWard(state.selectedWard);
 
     const scopeLabel = state.selectedWard !== 'all'
-      ? `Ward ${state.selectedWard}`
-      : (state.selectedZone === 'east' ? 'East (W1–7)' : state.selectedZone === 'west' ? 'West (W8–14)' : 'All 14 Wards');
+      ? `W${state.selectedWard}`
+      : (state.selectedZone === 'east' ? 'East' : state.selectedZone === 'west' ? 'West' : 'All');
 
     if (!canSee) {
-      banner.innerHTML = `<div class="flex items-center justify-between text-xs"><span class="font-extrabold text-indigo-800">${scopeLabel} · ${st.total.toLocaleString()} Voters</span><span class="text-slate-500 font-semibold">M: ${st.male} · F: ${st.female} · Read-only view</span></div>`;
+      banner.innerHTML = `<div class="flex items-center justify-between text-[11px]"><span class="font-extrabold text-indigo-800">${scopeLabel}: ${st.total.toLocaleString()}</span><span class="text-slate-500 font-semibold">M:${st.male} F:${st.female} · Read-only</span></div>`;
       return;
     }
 
     const delPct = st.total ? Math.round((st.delivered / st.total) * 100) : 0;
     banner.innerHTML = `
-      <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2">
-        <span class="text-xs font-extrabold text-indigo-800">${scopeLabel} Stats</span>
-        <div class="flex flex-wrap items-center gap-1 text-[11px] font-bold">
-          <button type="button" data-stat-filter="bus_needed" class="px-2 py-0.5 rounded-full ${state.fSpecial === 'bus_needed' ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-900'}">Bus: ${st.busNeeded}</button>
-          <button type="button" data-stat-filter="auto_needed" class="px-2 py-0.5 rounded-full ${state.fSpecial === 'auto_needed' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'}">Auto: ${st.autoNeeded}</button>
-          <button type="button" data-stat-filter="deceased" class="px-2 py-0.5 rounded-full ${state.fSpecial === 'deceased' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-800'}">Deceased: ${st.deceased}</button>
-          <span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">Abroad: ${st.outCountry}</span>
+      <div class="flex flex-wrap items-center justify-between gap-1 text-[11px]">
+        <div class="flex flex-wrap items-center gap-2 font-semibold text-slate-700">
+          <span class="font-extrabold text-indigo-800">${scopeLabel}: ${st.total.toLocaleString()}</span>
+          <span>Del: <b class="text-emerald-700">${st.delivered}</b> (${delPct}%)</span>
+          <span>Cont: <b class="text-blue-700">${st.contacted}</b></span>
+          <span>Pro/Sw/Opp: <b class="text-indigo-800">${st.pro}/${st.swing}/${st.against}</b></span>
         </div>
-      </div>
-      <div class="grid grid-cols-4 gap-1.5 text-center text-[11px]">
-        <div class="bg-slate-50 rounded-xl p-1.5 border border-slate-100"><div class="font-extrabold text-slate-900">${st.total.toLocaleString()}</div><div class="text-[10px] text-slate-500">M:${st.male} F:${st.female}</div></div>
-        <div class="bg-emerald-50 rounded-xl p-1.5 border border-emerald-100"><div class="font-extrabold text-emerald-700">${st.delivered} (${delPct}%)</div><div class="text-[10px] text-emerald-700">Delivered</div></div>
-        <div class="bg-blue-50 rounded-xl p-1.5 border border-blue-100"><div class="font-extrabold text-blue-700">${st.contacted}</div><div class="text-[10px] text-blue-700">Contacted</div></div>
-        <div class="bg-indigo-50 rounded-xl p-1.5 border border-indigo-100"><div class="font-extrabold text-indigo-800">${st.pro}/${st.swing}/${st.against}</div><div class="text-[10px] text-indigo-700">Pro/Sw/Opp</div></div>
+        <div class="flex flex-wrap items-center gap-1 font-bold">
+          <button type="button" data-stat-filter="bus_needed" class="px-1.5 py-0.5 rounded-full text-[10px] ${state.fSpecial === 'bus_needed' ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-900'}">Bus:${st.busNeeded}</button>
+          <button type="button" data-stat-filter="auto_needed" class="px-1.5 py-0.5 rounded-full text-[10px] ${state.fSpecial === 'auto_needed' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'}">Auto:${st.autoNeeded}</button>
+          <button type="button" data-stat-filter="deceased" class="px-1.5 py-0.5 rounded-full text-[10px] ${state.fSpecial === 'deceased' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-800'}">Dec:${st.deceased}</button>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-800">Abroad:${st.outCountry}</span>
+        </div>
       </div>`;
     banner.querySelectorAll('[data-stat-filter]').forEach(btn => {
       btn.addEventListener('click', () => jumpToSpecialFilter(btn.dataset.statFilter));
@@ -530,26 +526,26 @@
     const st = computeStats(pool);
     card = document.createElement('div');
     card.id = 'v4-dash-logistics';
-    card.className = 'mb-3 bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs space-y-2.5';
+    card.className = 'mb-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-xs space-y-2';
     card.innerHTML = `
       <div class="flex items-center justify-between">
         <h3 class="text-xs font-extrabold uppercase tracking-wide text-indigo-800">Election-Day Transport &amp; Contacts (Tap to Filter)</h3>
         <span class="text-[11px] font-bold text-emerald-700">📞 Phones Saved: ${st.withPhone}</span>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-        <button type="button" data-dash-filter="bus_needed" class="p-2.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 transition">
+        <button type="button" data-dash-filter="bus_needed" class="p-2 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 transition">
           <div class="text-lg font-extrabold text-cyan-900">${st.busNeeded}</div>
           <div class="text-[11px] font-bold text-cyan-800">Bus Needed</div>
         </button>
-        <button type="button" data-dash-filter="auto_needed" class="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 transition">
+        <button type="button" data-dash-filter="auto_needed" class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 transition">
           <div class="text-lg font-extrabold text-amber-900">${st.autoNeeded}</div>
           <div class="text-[11px] font-bold text-amber-800">Auto Needed</div>
         </button>
-        <button type="button" data-dash-filter="deceased" class="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 transition">
+        <button type="button" data-dash-filter="deceased" class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 transition">
           <div class="text-lg font-extrabold text-rose-800">${st.deceased}</div>
           <div class="text-[11px] font-bold text-rose-700">Deceased</div>
         </button>
-        <div class="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
+        <div class="p-2 rounded-xl bg-purple-50 border border-purple-200">
           <div class="text-lg font-extrabold text-purple-900">${st.outVillage} / ${st.outCountry}</div>
           <div class="text-[11px] font-bold text-purple-800">Out Village / Country</div>
         </div>
@@ -602,7 +598,7 @@
 
   function boot() {
     initFirebaseConfig();
-    injectCompactMobileCSS();
+    injectCompactLayoutCSS();
     wireSyncModalButton();
     if (typeof startLiveSync === 'function') startLiveSync();
     window.pullFromFirebase(true);
